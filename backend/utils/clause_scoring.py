@@ -3,7 +3,22 @@ import os
 import uuid
 from openai import OpenAI
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY")
+base_url = os.getenv("LLM_BASE_URL")
+
+# Auto-detect OpenRouter if base_url is not set but key is OpenRouter
+if not base_url and (os.getenv("OPENROUTER_API_KEY") or (api_key and api_key.startswith("sk-or-v1-"))):
+    base_url = "https://openrouter.ai/api/v1"
+
+# Default model: if using OpenRouter, use a top free model; otherwise default to gpt-4o-mini
+default_model = "liquid/lfm-2.5-2.6b:free" if base_url and "openrouter" in base_url else "gpt-4o-mini"
+model_name = os.getenv("LLM_MODEL", default_model)
+
+client_kwargs = {"api_key": api_key or "dummy_key"}
+if base_url:
+    client_kwargs["base_url"] = base_url
+
+client = OpenAI(**client_kwargs)
 
 def analyze_clauses(text, role="unsure"):
     prompt = f"""
@@ -35,14 +50,22 @@ Contract Text (truncated to 4000 chars):
     #         return sample_ret
 
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=model_name,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.4
     )
 
     try:
-        content = response.choices[0].message.content
-        result = json.loads(content)
+        content = response.choices[0].message.content or ""
+        # Clean markdown code blocks if present (e.g. ```json ... ```)
+        cleaned_content = content.strip()
+        if cleaned_content.startswith("```"):
+            cleaned_content = cleaned_content.split("\n", 1)[-1]
+        if cleaned_content.endswith("```"):
+            cleaned_content = cleaned_content.rsplit("```", 1)[0]
+        cleaned_content = cleaned_content.strip()
+
+        result = json.loads(cleaned_content)
     except Exception:
         return {
             "error": True,
