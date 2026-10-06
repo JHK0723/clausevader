@@ -14,7 +14,7 @@ async def ask_assistant(question, document_text, user_id):
         f"User Question:\n{question}"
     )
 
-    response = client.chat.completions.create(model="gpt-4",
+    response = client.chat.completions.create(model="gpt-4o-mini",
     messages=[
         {"role": "system", "content": "You are a helpful legal contract assistant who is also a dark sith lord from star wars."},
         {"role": "user", "content": prompt}

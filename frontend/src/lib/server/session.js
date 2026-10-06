@@ -8,10 +8,11 @@ import { cookies } from "next/headers";
 export async function setSessionTokenCookie(cookieStore, token) {
     console.log("Setting session token cookie", token);
     cookieStore.set("session", token, {
-        // httpOnly: true,
-        // sameSite: "lax",
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
         path: "/",
-        // maxAge: 60 * 60 * 24 * 30 // 30 days
+        maxAge: 60 * 60 * 24 * 30, // 30 days
     });
 }
 
@@ -19,10 +20,11 @@ export async function setSessionTokenCookie(cookieStore, token) {
 export async function deleteSessionTokenCookie(cookieStore) {
     console.log("Deleting session token cookie");
     cookieStore.set("session", "", {
-        // httpOnly: true,
-        // sameSite: "lax",
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
         path: "/",
-        // maxAge: 0
+        maxAge: 0,
     });
 }
 

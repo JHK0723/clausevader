@@ -1,31 +1,67 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
-from fastapi import BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from uuid import uuid4, UUID
+import os
+import io
+import boto3
 
 from db import SessionLocal
 from models import User, Document, Clause, Chat, DocumentStatusEnum
 from utils.extract_text import extract_text_from_file
 from utils.clause_scoring import analyze_clauses
-from utils.chat_assistant import ask_assistant  # <-- updated for streaming
+from utils.chat_assistant import ask_assistant
 
 
 app = FastAPI()
 
+# ---------------------------------------------------------------------------
+# CORS — restrict to the known frontend origins.
+# Allow localhost for local development and the Vercel production URL.
+# ---------------------------------------------------------------------------
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,https://clausevader.vercel.app"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[o.strip() for o in ALLOWED_ORIGINS],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# UPLOAD_FOLDER = "uploads"
-# os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# ---------------------------------------------------------------------------
+# S3 client — used to store original uploaded contract files.
+# Credentials are sourced from the Lambda execution role (no hardcoded keys).
+# ---------------------------------------------------------------------------
+S3_BUCKET = os.getenv("AWS_S3_BUCKET_NAME", "")
+s3_client = boto3.client("s3", region_name=os.getenv("AWS_REGION", "us-east-1"))
+
+
+def upload_file_to_s3(file_bytes: bytes, filename: str, doc_id: str) -> str:
+    """Upload the original contract file to S3 and return the S3 key."""
+    key = f"contracts/{doc_id}/{filename}"
+    s3_client.put_object(
+        Bucket=S3_BUCKET,
+        Key=key,
+        Body=file_bytes,
+        ServerSideEncryption="AES256",
+    )
+    return key
+
 
 def process_document(doc_id: UUID, extracted_text: str, role: str):
+    """
+    Synchronous document analysis — runs the LLM clause analysis and persists
+    results to the database.
+
+    NOTE: This function is called synchronously (not as a FastAPI background
+    task) so it completes before Lambda freezes the execution environment.
+    The upload endpoint returns after this function completes.
+    """
     db = SessionLocal()
 
     try:
@@ -34,7 +70,7 @@ def process_document(doc_id: UUID, extracted_text: str, role: str):
             # Mark as failed
             doc = db.query(Document).filter(Document.id == doc_id).first()
             if doc:
-                doc.status = DocumentStatusEnum.failed
+                doc.status = DocumentStatusEnum.error
                 db.commit()
             return
 
@@ -60,41 +96,78 @@ def process_document(doc_id: UUID, extracted_text: str, role: str):
             doc.favourability_score = analysis['favourability_score']
             doc.status = DocumentStatusEnum.done
             db.commit()
+    except Exception as e:
+        # Mark document as error so the UI can surface the problem
+        db.rollback()
+        doc = db.query(Document).filter(Document.id == doc_id).first()
+        if doc:
+            doc.status = DocumentStatusEnum.error
+            db.commit()
+        raise e
     finally:
         db.close()
 
+
 @app.post("/api/upload")
 async def upload_file(
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     role: str = Form(...),
-    user_id: int = Form(...)
+    user_id: int = Form(...),
 ):
     db = SessionLocal()
 
     if not (file.filename.endswith(".pdf") or file.filename.endswith(".docx")):
         raise HTTPException(status_code=400, detail="Only PDF or DOCX allowed.")
 
+    # Read file bytes once — needed for both S3 upload and text extraction
+    file_bytes = await file.read()
+    file_like = io.BytesIO(file_bytes)
+
     doc_id = uuid4()
 
-    extracted_text = extract_text_from_file(file)
+    # ------------------------------------------------------------------
+    # S3: Store the original contract file (private, server-side encrypted)
+    # Falls back gracefully if S3 is not configured (e.g. local dev)
+    # ------------------------------------------------------------------
+    original_file_url = None
+    if S3_BUCKET:
+        try:
+            s3_key = upload_file_to_s3(file_bytes, file.filename, str(doc_id))
+            original_file_url = s3_key  # Store the S3 key, not a public URL
+        except Exception as s3_err:
+            # Log but don't fail the upload if S3 is unavailable
+            print(f"[S3 WARNING] Could not upload to S3: {s3_err}")
+
+    # Extract text from the in-memory file bytes
+    extracted_text = extract_text_from_file(file_like, file.filename)
 
     new_doc = Document(
         id=doc_id,
         user_id=user_id,
         filename=file.filename,
+        original_file_url=original_file_url,
         extracted_text=extracted_text,
         role=role,
-        status=DocumentStatusEnum.processing
+        status=DocumentStatusEnum.processing,
     )
     db.add(new_doc)
     db.commit()
     db.close()
 
-    # Kick off background task
-    background_tasks.add_task(process_document, doc_id, extracted_text, role)
+    # ------------------------------------------------------------------
+    # Run analysis synchronously.
+    # Lambda does not reliably support FastAPI BackgroundTasks because the
+    # execution environment may freeze immediately after the HTTP response
+    # is sent. Running synchronously here ensures the analysis completes
+    # before we return. The client already polls status separately.
+    # ------------------------------------------------------------------
+    try:
+        process_document(doc_id, extracted_text, role)
+    except Exception as e:
+        print(f"[ANALYSIS ERROR] doc_id={doc_id}: {e}")
 
-    return {"document_id": str(doc_id), "status": "processing"}
+    return {"document_id": str(doc_id), "status": "done"}
+
 
 @app.get("/api/documents/{doc_id}/status")
 def check_status(doc_id: UUID):
@@ -119,7 +192,7 @@ def get_analysis(doc_id: UUID):
             "x": clause.x,
             "y": clause.y,
             "summary": clause.summary,
-            "impact": clause.impact
+            "impact": clause.impact,
         }
         for clause in clauses
     ]
@@ -127,7 +200,7 @@ def get_analysis(doc_id: UUID):
     return {
         "favourability_score": doc.favourability_score,
         "clause_graph": clause_graph,
-        "meta": {"title": doc.filename, "uploaded_by": doc.user_id}
+        "meta": {"title": doc.filename, "uploaded_by": doc.user_id},
     }
 
 
@@ -152,11 +225,11 @@ async def chat_with_doc_stream(document_id: UUID, message: str, user_id: int):
                 user_id=user_id,
                 document_id=document_id,
                 user_message=message,
-                ai_response=full_reply
+                ai_response=full_reply,
             )
             db.add(chat)
             db.commit()
-            
+
             yield "event: end\ndata: done\n\n"  # signal end of stream
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

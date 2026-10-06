@@ -56,7 +56,8 @@ export function UploadForm({ userId }) {
 
     setLoading(true);
     try {
-      const res = await fetch("https://clausevader-production.up.railway.app/api/upload", {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+      const res = await fetch(`${backendUrl}/api/upload`, {
         method: "POST",
         body: formData,
       });

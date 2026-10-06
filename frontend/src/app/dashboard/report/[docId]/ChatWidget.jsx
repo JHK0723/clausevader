@@ -31,7 +31,8 @@ export default function ChatWidget({ documentId, userId, user, history = [] }) {
 		setMessages(prev => [...prev, { from: 'user', text: userMessage }]);
 
 		let fullReply = '';
-		const evtSource = new EventSource(`https://clausevader-production.up.railway.app/api/chat/stream?document_id=${documentId}&message=${encodeURIComponent(userMessage)}&user_id=${userId}`);
+		const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+		const evtSource = new EventSource(`${backendUrl}/api/chat/stream?document_id=${documentId}&message=${encodeURIComponent(userMessage)}&user_id=${userId}`);
 
 		evtSource.onmessage = (event) => {
 			if (event.data.startsWith('[Error]')) {

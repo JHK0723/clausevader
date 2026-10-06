@@ -8,3 +8,5 @@ python-docx
 openai
 python-multipart
 sse-starlette
+mangum
+boto3
