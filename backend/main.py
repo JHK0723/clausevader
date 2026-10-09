@@ -38,7 +38,7 @@ app.add_middleware(
 # Credentials are sourced from the Lambda execution role (no hardcoded keys).
 # ---------------------------------------------------------------------------
 S3_BUCKET = os.getenv("AWS_S3_BUCKET_NAME", "")
-s3_client = boto3.client("s3", region_name=os.getenv("AWS_REGION", "us-east-1"))
+s3_client = boto3.client("s3", region_name=os.getenv("AWS_REGION", "ap-south-2"))
 
 
 def upload_file_to_s3(file_bytes: bytes, filename: str, doc_id: str) -> str:
