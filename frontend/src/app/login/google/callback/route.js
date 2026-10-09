@@ -22,7 +22,8 @@ export async function GET(request) {
         tokens = await google.validateAuthorizationCode(code, codeVerifier);
     } catch (e) {
         console.error("OAuth error", e);
-        return new Response("OAuth error", { status: 400 });
+        const detail = e?.description || e?.message || JSON.stringify(e);
+        return new Response(`OAuth error: ${detail}`, { status: 400 });
     }
 
     const claims = decodeIdToken(tokens.idToken());
@@ -30,13 +31,18 @@ export async function GET(request) {
     const username = claims.name;
     const picture = claims.picture;
 
-    const existingUser = await getUserFromGoogleId(googleUserId);
-    const sessionToken = await generateSessionToken();
+    try {
+        const existingUser = await getUserFromGoogleId(googleUserId);
+        const sessionToken = await generateSessionToken();
 
-    const user = existingUser ?? await createUser(googleUserId, username, picture);
-    const session = await createSession(sessionToken, user.id);
+        const user = existingUser ?? await createUser(googleUserId, username, picture);
+        const session = await createSession(sessionToken, user.id);
 
-    await setSessionTokenCookie(cookieStore, sessionToken);
+        await setSessionTokenCookie(cookieStore, sessionToken);
+    } catch (dbErr) {
+        console.error("Database / Session error", dbErr);
+        return new Response(`Database error: ${dbErr?.message || dbErr}`, { status: 500 });
+    }
 
     return new Response(null, {
         status: 302,
