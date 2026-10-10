@@ -1,5 +1,5 @@
 import { fetch, fetchOne } from "@/lib/server/db";
-import Report from "./Report";
+import ReportWorkspace from "./ReportWorkspace";
 import ChatWidget from "./ChatWidget";
 import Score from "./Score";
 import Link from "next/link";
@@ -48,7 +48,7 @@ export default async function Page({ params }) {
 
 	return (
 		<div className="flex flex-col min-h-screen bg-black text-zinc-100">
-			{/* Top Bar: Contract Info + AWS Resources Showcase */}
+			{/* Top Bar: Contract Details & Quick Stats */}
 			<div className="border-b border-zinc-800/80 bg-zinc-950/90 px-6 py-3 flex flex-wrap items-center justify-between gap-3">
 				<div className="flex items-center gap-3">
 					<Link href="/dashboard" className="text-xs text-zinc-400 hover:text-white transition flex items-center gap-1">
@@ -63,29 +63,21 @@ export default async function Page({ params }) {
 					</div>
 				</div>
 
-				{/* AWS Resources Showcase */}
-				<div className="flex items-center gap-2 flex-wrap text-[11px] text-zinc-400">
-					<span className="text-zinc-500 font-medium mr-1 hidden sm:inline">⚡ AWS Infrastructure:</span>
-					<span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-amber-400/90 font-mono flex items-center gap-1">
-						<span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> Aurora PostgreSQL
-					</span>
-					<span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-orange-400/90 font-mono flex items-center gap-1">
-						<span className="w-1.5 h-1.5 rounded-full bg-orange-400" /> Lambda Serverless
-					</span>
-					<span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-emerald-400/90 font-mono flex items-center gap-1">
-						<span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> S3 Encrypted
-					</span>
+				<div className="flex items-center gap-3 text-xs text-zinc-400">
+					<span>Role: <strong className="text-zinc-200 capitalize">{document.role || "Recipient"}</strong></span>
+					<span className="text-zinc-700">•</span>
+					<span>Status: <strong className="text-emerald-400 capitalize">{document.status}</strong></span>
 				</div>
 			</div>
 
-			{/* Main Content Layout */}
+			{/* Main Workspace Layout */}
 			<div className="flex flex-col lg:flex-row flex-1 w-full overflow-hidden">
-				{/* Left section: Interactive Graph & Clause Inspector */}
-				<div className="flex-1 overflow-y-auto p-2 lg:p-4">
-					<Report clausesData={clausesData} />
+				{/* Left Section: Multi-Aspect Analysis Workspace (Graph, Redline Matrix, Counter-Offer Drafter) */}
+				<div className="flex-1 overflow-y-auto min-h-[600px] lg:min-h-0">
+					<ReportWorkspace clausesData={clausesData} documentTitle={document.filename} />
 				</div>
 
-				{/* Right section: Score Gauge & Full-Height Chat Assistant */}
+				{/* Right Section: Score Gauge & Full-Height Chat Assistant */}
 				<div className="w-full lg:w-[480px] xl:w-[540px] border-t lg:border-t-0 lg:border-l border-zinc-800/80 bg-zinc-950/60 flex flex-col h-[750px] lg:h-[calc(100vh-53px)]">
 					{/* Compact Score Gauge */}
 					<div className="p-4 border-b border-zinc-800/80 bg-zinc-950/40 shrink-0">

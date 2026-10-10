@@ -7,13 +7,103 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-// Strip any accidental stage-direction actions (*leans back*, *eyes glow*)
-function cleanSithText(raw) {
+// Clean only specific roleplay emote tags like *leans back*, *eyes glow* without touching markdown bold (**bold**) or bullet points
+function sanitizeStageDirections(raw) {
   if (!raw) return '';
   return raw
-    .replace(/\*[^*]+\*/g, '')
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\*(?:leans|eyes|glares|smiles|laughs|sighs|extends|stands|whispers|steps)[^*]*\*/gi, '')
     .trim();
+}
+
+function parseInline(text) {
+  if (!text) return null;
+  const parts = [];
+  let remaining = text;
+  let key = 0;
+
+  while (remaining.length > 0) {
+    const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+    if (!boldMatch) {
+      parts.push(remaining);
+      break;
+    }
+
+    const index = boldMatch.index;
+    if (index > 0) {
+      parts.push(remaining.slice(0, index));
+    }
+    parts.push(
+      <strong key={key++} className="font-semibold text-white">
+        {boldMatch[1]}
+      </strong>
+    );
+    remaining = remaining.slice(index + boldMatch[0].length);
+  }
+
+  return parts;
+}
+
+function FormattedMessage({ text }) {
+  if (!text) return null;
+  const lines = text.split('\n');
+
+  return (
+    <div className="space-y-2 leading-relaxed text-[15px]">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={idx} className="h-1" />;
+
+        // Headers
+        if (trimmed.startsWith('# ')) {
+          return (
+            <h3 key={idx} className="text-lg font-bold text-red-400 mt-2 mb-1">
+              {parseInline(trimmed.slice(2))}
+            </h3>
+          );
+        }
+        if (trimmed.startsWith('## ') || trimmed.startsWith('### ')) {
+          return (
+            <h4 key={idx} className="text-base font-bold text-amber-300 mt-2 mb-1">
+              {parseInline(trimmed.replace(/^#+\s*/, ''))}
+            </h4>
+          );
+        }
+
+        // Bullet point
+        if (/^[-*•]\s+/.test(trimmed)) {
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-2 text-zinc-200">
+              <span className="text-red-500 font-bold shrink-0 mt-0.5">•</span>
+              <span className="flex-1">{parseInline(trimmed.replace(/^[-*•]\s+/, ''))}</span>
+            </div>
+          );
+        }
+
+        // Numbered list
+        const numMatch = trimmed.match(/^(\d+)\.\s+(.*)/);
+        if (numMatch) {
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-2 text-zinc-200">
+              <span className="text-red-400 font-mono font-bold shrink-0">{numMatch[1]}.</span>
+              <span className="flex-1">{parseInline(numMatch[2])}</span>
+            </div>
+          );
+        }
+
+        // Table separator or row
+        if (trimmed.startsWith('|')) {
+          return (
+            <div key={idx} className="font-mono text-xs bg-zinc-950/60 p-1.5 rounded border border-zinc-800 text-zinc-300 overflow-x-auto">
+              {trimmed}
+            </div>
+          );
+        }
+
+        // Regular text
+        return <p key={idx} className="text-zinc-200">{parseInline(line)}</p>;
+      })}
+    </div>
+  );
 }
 
 export default function ChatWidget({ documentId, userId, user, history = [] }) {
@@ -21,12 +111,12 @@ export default function ChatWidget({ documentId, userId, user, history = [] }) {
     if (history && history.length > 0) {
       return history.map(m => ({
         ...m,
-        text: m.from === 'ai' ? cleanSithText(m.text) : m.text
+        text: sanitizeStageDirections(m.text)
       }));
     }
     return [{
       from: 'ai',
-      text: "Speak, mortal. I have parsed your contract. Ask your question and I shall reveal the traps and leverage within."
+      text: "Speak, mortal. I have parsed your contract. Ask your question and I shall reveal the legal traps and negotiation leverage within."
     }];
   });
 
@@ -34,7 +124,7 @@ export default function ChatWidget({ documentId, userId, user, history = [] }) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [streamingText, setStreamingText] = React.useState('');
   const messagesEndRef = React.useRef(null);
-  
+
   // Streaming typewriter state
   const targetReplyRef = React.useRef('');
   const revealedLengthRef = React.useRef(0);
@@ -45,7 +135,6 @@ export default function ChatWidget({ documentId, userId, user, history = [] }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText]);
 
-  // Clean typewriter timer on unmount
   React.useEffect(() => {
     return () => {
       if (streamTimerRef.current) clearInterval(streamTimerRef.current);
@@ -62,8 +151,8 @@ export default function ChatWidget({ documentId, userId, user, history = [] }) {
       const currentLen = revealedLengthRef.current;
 
       if (currentLen < target.length) {
-        // Step forward by 1-3 chars depending on backlog
-        const step = Math.min(3, Math.max(1, Math.floor((target.length - currentLen) / 20) + 1));
+        // Fast-forward backlog smoothly (up to 4 chars per tick)
+        const step = Math.min(6, Math.max(1, Math.floor((target.length - currentLen) / 15) + 1));
         const nextLen = Math.min(target.length, currentLen + step);
         revealedLengthRef.current = nextLen;
         setStreamingText(target.slice(0, nextLen));
@@ -72,13 +161,13 @@ export default function ChatWidget({ documentId, userId, user, history = [] }) {
         streamTimerRef.current = null;
         if (onFinish) onFinish(target);
       }
-    }, 16);
+    }, 14);
   };
 
   const sendMessage = async (presetText) => {
     const textToSend = presetText || input;
     if (!textToSend.trim() || isLoading) return;
-    
+
     const userMessage = textToSend.trim();
     if (!presetText) setInput('');
     setIsLoading(true);
@@ -89,7 +178,7 @@ export default function ChatWidget({ documentId, userId, user, history = [] }) {
     isStreamActiveRef.current = true;
 
     startTypewriter((finalText) => {
-      const sanitized = cleanSithText(finalText);
+      const sanitized = sanitizeStageDirections(finalText);
       setMessages(prev => [...prev, { from: 'ai', text: sanitized }]);
       setStreamingText('');
       setIsLoading(false);
@@ -131,7 +220,7 @@ export default function ChatWidget({ documentId, userId, user, history = [] }) {
             <h2 className="text-sm font-semibold text-zinc-100 flex items-center gap-1.5">
               <span>ClauseVader AI Counsel</span>
             </h2>
-            <p className="text-[11px] text-zinc-400">Direct Contract Analysis • AWS Lambda</p>
+            <p className="text-[11px] text-zinc-400">Direct Contract Analysis & Strategy</p>
           </div>
         </div>
         <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
@@ -161,13 +250,13 @@ export default function ChatWidget({ documentId, userId, user, history = [] }) {
 
                 <div
                   className={cn(
-                    "px-4 py-3 rounded-2xl max-w-[85%] whitespace-pre-wrap leading-relaxed text-[15px]",
+                    "px-4 py-3 rounded-2xl max-w-[85%] leading-relaxed text-[15px]",
                     isUser
                       ? "bg-red-600 text-white font-medium rounded-tr-sm shadow-md"
                       : "bg-zinc-900/90 border border-zinc-800/90 text-zinc-100 rounded-tl-sm shadow-lg shadow-black/40"
                   )}
                 >
-                  {msg.text}
+                  <FormattedMessage text={msg.text} />
                 </div>
 
                 {isUser && (
@@ -180,23 +269,23 @@ export default function ChatWidget({ documentId, userId, user, history = [] }) {
             );
           })}
 
-          {/* Real-time Streaming message */}
+          {/* Streaming message */}
           {isLoading && (
             <div className="flex items-start gap-3 justify-start">
               <Avatar className="w-9 h-9 border border-red-900/60 shadow-md mt-0.5 shrink-0">
                 <AvatarImage src="/assistant.png" />
                 <AvatarFallback className="bg-red-950 text-red-200 text-xs font-bold">CV</AvatarFallback>
               </Avatar>
-              <div className="px-4 py-3 rounded-2xl rounded-tl-sm max-w-[85%] whitespace-pre-wrap leading-relaxed text-[15px] bg-zinc-900/90 border border-red-900/40 text-zinc-100 shadow-lg shadow-black/40">
+              <div className="px-4 py-3 rounded-2xl rounded-tl-sm max-w-[85%] leading-relaxed text-[15px] bg-zinc-900/90 border border-red-900/40 text-zinc-100 shadow-lg shadow-black/40">
                 {streamingText ? (
-                  <span>
-                    {cleanSithText(streamingText)}
+                  <div>
+                    <FormattedMessage text={streamingText} />
                     <span className="inline-block w-1.5 h-4 ml-1 bg-red-500 animate-pulse align-middle" />
-                  </span>
+                  </div>
                 ) : (
                   <span className="flex items-center gap-2 text-zinc-400 text-sm">
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                    ClauseVader is examining your document...
+                    ClauseVader is formulating your strategic counsel...
                   </span>
                 )}
               </div>
@@ -210,8 +299,8 @@ export default function ChatWidget({ documentId, userId, user, history = [] }) {
       {/* Suggested Quick Prompts */}
       <div className="px-3 pt-2 pb-1 border-t border-zinc-800/80 bg-zinc-950 flex flex-wrap gap-1.5">
         {[
-          "What are the main risks?",
           "How can I negotiate this?",
+          "What are the main risks?",
           "Explain confidentiality duties",
         ].map((prompt, i) => (
           <button
