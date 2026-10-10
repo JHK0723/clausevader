@@ -7,20 +7,60 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
+// Intelligently classify document type based on title and clause content
+function detectDocumentCategory(title, clauses) {
+  const combined = (title + ' ' + clauses.map(c => c.summary + ' ' + (c.clause_text || '')).join(' ')).toLowerCase();
+  if (/rent|lease|tenant|landlord|premises|flat|apartment|security deposit/.test(combined)) {
+    return 'rental';
+  }
+  if (/intern|employment|salary|stipend|employee|hiring|job offer|probation/.test(combined)) {
+    return 'employment';
+  }
+  if (/freelance|consultant|contractor|vendor|deliverables|milestone/.test(combined)) {
+    return 'contractor';
+  }
+  if (/nda|non-disclosure|confidentiality|trade secret/.test(combined)) {
+    return 'nda';
+  }
+  return 'general';
+}
+
 export default function ReportWorkspace({ clausesData, documentTitle = "Contract", docId, userId }) {
   const [activeTab, setActiveTab] = React.useState('graph'); // 'graph' | 'redline' | 'email'
   const [selectedFilter, setSelectedFilter] = React.useState('all');
 
-  // Interactive Counter-Offer Negotiation Parameters
-  const [stipendAmount, setStipendAmount] = React.useState('₹25,000 / month');
-  const [remotePolicy, setRemotePolicy] = React.useState('Hybrid (2 days remote / 3 days in office)');
-  const [fteMilestone, setFteMilestone] = React.useState('Formal review at Week 4 with clear performance criteria');
-  const [candidateName, setCandidateName] = React.useState('Harish Krishna J');
-  
-  // AWS Persistence State
-  const [isSavingToAws, setIsSavingToAws] = React.useState(false);
-  const [isExportingToS3, setIsExportingToS3] = React.useState(false);
-  const [savedS3Key, setSavedS3Key] = React.useState(null);
+  const docCategory = React.useMemo(() => {
+    return detectDocumentCategory(documentTitle, clausesData);
+  }, [documentTitle, clausesData]);
+
+  // Universal Negotiation Parameters
+  const [recipientTitle, setRecipientTitle] = React.useState(() => {
+    switch (docCategory) {
+      case 'rental': return 'Property Owner / Landlord';
+      case 'employment': return 'Hiring Team & HR Leadership';
+      case 'contractor': return 'Client / Project Stakeholder';
+      default: return 'Counterparty & Legal Representative';
+    }
+  });
+
+  const [senderName, setSenderName] = React.useState('Harish Krishna J');
+
+  const [customDemand, setCustomDemand] = React.useState(() => {
+    switch (docCategory) {
+      case 'rental':
+        return 'Ensure security deposit refund within 15 days of departure, cap annual rent escalation at 5%, and specify 30 days notice for inspections.';
+      case 'employment':
+        return 'Provide a competitive monthly living stipend to cover local expenses, establish transparent criteria for full-time conversion, and permit hybrid work flexibility.';
+      case 'contractor':
+        return 'Net-15 payment milestones, limit revisions to 2 cycles per deliverable, and retain pre-existing background IP.';
+      default:
+        return 'Establish mutual notice periods, cap unilateral indemnities, and balance confidentiality duration to 2 years.';
+    }
+  });
+
+  // Saving / Downloading state
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [isDownloading, setIsDownloading] = React.useState(false);
   const [lastSavedTime, setLastSavedTime] = React.useState(null);
 
   const unfavourableCount = clausesData.filter(c => c.impact === 'unfavourable').length;
@@ -37,50 +77,72 @@ export default function ReportWorkspace({ clausesData, documentTitle = "Contract
     toast.success(`${label} copied to clipboard!`);
   };
 
-  // Build a realistic, authoritative counter-offer email tackling the actual risks
-  const generatedEmail = React.useMemo(() => {
-    return `Subject: Counter-Offer & Proposed Addendum: ${documentTitle} - ${candidateName}
+  // Generate a dynamic, tailored amendment / counter-response
+  const generatedResponse = React.useMemo(() => {
+    // Collect the concrete risky clauses and formulate tailored counter-terms
+    const actionableClauses = clausesData
+      .filter(c => c.impact === 'unfavourable' || (c.cons && c.cons.length > 0))
+      .slice(0, 5);
 
-Dear Hiring Team & Leadership,
+    const clauseCounterPoints = actionableClauses.map((c, i) => {
+      let counterTerm = c.suggested_rewrite;
+      const combinedText = (c.summary + ' ' + (c.clause_text || '')).toLowerCase();
 
-Thank you for selecting me for the Intern-AI Products opportunity at Logesys Solutions India. I am enthusiastic about the company's AI initiatives and confident in my ability to deliver immediate value to your products.
+      if (/unpaid|uncompensated|no stipend|without pay/.test(combinedText)) {
+        counterTerm = "Inclusion of a standard monthly living stipend/allowance to offset ongoing living and commuting expenses during the term.";
+      } else if (/solely|exclusively|office|premises/.test(combinedText) && /location|bangalore|address/.test(combinedText)) {
+        counterTerm = "Permit flexible hybrid working arrangements (e.g., partial remote days) where deliverables allow.";
+      } else if (/discretion|not guaranteed|may be offered/.test(combinedText)) {
+        counterTerm = "Establish structured performance milestones with pre-defined criteria and timelines for full-time transition/renewal.";
+      } else if (/confidentiality|proprietary/.test(combinedText)) {
+        counterTerm = "Narrow scope to genuine employer proprietary information, explicitly preserving ownership of personal prior knowledge and academic portfolios.";
+      } else if (/deposit|refund|deduction/.test(combinedText)) {
+        counterTerm = "Explicit refund timeline of 15 days upon exit, with deduction limited to documented damages excluding normal wear and tear.";
+      } else if (!counterTerm) {
+        counterTerm = "Mutual amendment ensuring balanced terms and bilateral notice protection.";
+      }
 
-Having thoroughly examined the terms of the offer letter, I would like to propose a few constructive adjustments to ensure the agreement is mutually beneficial, sustainable, and aligned with standard industry practices:
+      return `${i + 1}. REGARDING: "${c.summary}"\n• Concern: ${c.cons?.[0] || 'Unilateral risk exposure'}\n• Proposed Adjustment: ${counterTerm}`;
+    }).join('\n\n');
 
-1. COMPENSATION & STIPEND
-• Current Term: Uncompensated / Unpaid internship.
-• Proposed Counter: A professional living stipend of ${stipendAmount} to offset living and commuting expenses in Bangalore. Given the specialized AI engineering contributions expected, a performance stipend ensures dedicated focus and professional equity.
+    const categoryHeading =
+      docCategory === 'rental'
+        ? 'Tenancy Agreement Amendment & Review'
+        : docCategory === 'employment'
+        ? 'Offer Letter Counter-Proposal & Addendum'
+        : docCategory === 'contractor'
+        ? 'Service Agreement Terms Adjustment'
+        : 'Contract Terms Review & Proposed Amendments';
 
-2. CLEAR FULL-TIME CONVERSION PATHWAY (PPO)
-• Current Term: Discretionary consideration with no defined evaluation metrics.
-• Proposed Counter: ${fteMilestone}. Upon meeting mutually agreed deliverables, a formal Full-Time Employment (FTE) offer with pre-defined compensation ranges should be extended.
+    return `Subject: Inquiries & Proposed Amendments: ${documentTitle} - ${senderName}
 
-3. WORKPLACE FLEXIBILITY & LOCATION
-• Current Term: Strictly on-premise at the Bangalore office with no flexibility.
-• Proposed Counter: ${remotePolicy}. This allows optimal productivity while meeting in-person collaboration requirements.
+Dear ${recipientTitle},
 
-4. CONFIDENTIALITY & IP CLARIFICATION
-• Proposed Counter: Narrow confidentiality and IP assignment clauses to strictly cover proprietary employer assets created during working hours, explicitly preserving rights to pre-existing academic research and personal developer portfolios.
+Thank you for providing the agreement for review. I have carefully examined the terms of ${documentTitle}. While I look forward to finalizing our arrangement, there are several key clauses that require clarification and balanced adjustment prior to signature.
 
-5. EXECUTION TIMELINE
-• To allow both sides to formalize these amendments, I respectfully request extending the acceptance deadline by 5 business days.
+KEY CLAUSES REQUIRING AMENDMENT:
 
-I am eager to finalize these terms so we can commence our work seamlessly. Could we arrange a brief call this week to finalize this addendum?
+${clauseCounterPoints || '1. Terms require mutual balance and clear review milestones.'}
+
+ADDITIONAL CONSTRUCTIVE REQUESTS:
+• ${customDemand}
+
+TIMELINE FOR EXECUTION:
+To ensure both parties have adequate time to review these adjustments and execute the amended agreement, I request an extension of 5 business days on the acceptance timeline.
+
+I am confident that these adjustments provide mutual clarity, protection, and a sound foundation for our collaboration. Please let me know your availability for a brief call to finalize these terms.
 
 Sincerely,
-${candidateName}`;
-  }, [documentTitle, candidateName, stipendAmount, remotePolicy, fteMilestone]);
+${senderName}`;
+  }, [documentTitle, docCategory, recipientTitle, senderName, customDemand, clausesData]);
 
-  // Persist to AWS Aurora PostgreSQL & AWS S3
-  const handleSaveToAws = async (exportS3 = false) => {
+  // Save to database quietly
+  const handleSaveDraft = async () => {
     if (!docId) {
-      toast.error("Document ID missing");
+      toast.error("Document ID not found.");
       return;
     }
-
-    if (exportS3) setIsExportingToS3(true);
-    else setIsSavingToAws(true);
-
+    setIsSaving(true);
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
       const res = await fetch(`${backendUrl}/api/documents/${docId}/negotiation-draft`, {
@@ -88,35 +150,53 @@ ${candidateName}`;
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: userId || 1,
-          subject: `Counter-Offer & Proposed Addendum: ${documentTitle}`,
-          email_body: generatedEmail,
-          stipend_amount: stipendAmount,
+          subject: `Proposed Amendments: ${documentTitle}`,
+          email_body: generatedResponse,
+          stipend_amount: customDemand,
           key_points: {
-            stipend: stipendAmount,
-            remotePolicy,
-            fteMilestone,
-            candidate: candidateName
+            category: docCategory,
+            recipient: recipientTitle,
+            sender: senderName,
+            customDemand
           },
-          export_to_s3: exportS3
+          export_to_s3: true
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to save to AWS");
-
-      const data = await res.json();
-      setLastSavedTime(new Date().toLocaleTimeString());
-      if (data.s3_key) {
-        setSavedS3Key(data.s3_key);
-        toast.success(`Exported to AWS S3: ${data.s3_key}`);
-      } else {
-        toast.success("Saved counter-offer to AWS Aurora PostgreSQL!");
-      }
+      if (!res.ok) throw new Error("Save failed");
+      setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      toast.success("Draft saved successfully!");
     } catch (err) {
       console.error(err);
-      toast.error("Failed to save to AWS resources.");
+      toast.error("Could not save draft.");
     } finally {
-      setIsSavingToAws(false);
-      setIsExportingToS3(false);
+      setIsSaving(false);
+    }
+  };
+
+  // Download directly to user's device as a file
+  const handleDownloadFile = () => {
+    setIsDownloading(true);
+    try {
+      const cleanFilename = documentTitle.replace(/\.[^/.]+$/, "") + "_Proposed_Amendments.txt";
+      const blob = new Blob([generatedResponse], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = cleanFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      // Also trigger a background cloud save
+      handleSaveDraft();
+      toast.success("Downloaded proposed amendments!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Download failed.");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -156,7 +236,7 @@ ${candidateName}`;
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            <span>📝</span> Negotiation Counter-Offer Playbook
+            <span>📝</span> Proposed Amendments & Counter
           </button>
         </div>
 
@@ -283,111 +363,111 @@ ${candidateName}`;
           </div>
         )}
 
-        {/* TAB 3: COUNTER-OFFER NEGOTIATION PLAYBOOK WITH AWS PERSISTENCE */}
+        {/* TAB 3: UNIVERSAL AMENDMENT & COUNTER DRAFTER */}
         {activeTab === 'email' && (
           <div className="max-w-4xl mx-auto space-y-5">
-            {/* Strategy Configuration Cards */}
+            {/* Customization Inputs */}
             <Card className="bg-zinc-950 border border-zinc-800 shadow-xl">
               <CardHeader className="py-3.5 px-4 border-b border-zinc-800 bg-zinc-900/50">
                 <CardTitle className="text-sm font-semibold text-zinc-100 flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <span>⚙️</span> Customize Counter-Offer Leverage Points
+                    <span>⚙️</span> Tailor Negotiation & Counter Terms
                   </span>
-                  <span className="text-[11px] text-zinc-400 font-normal">
-                    Directly counters unpaid status & restrictive clauses
+                  <span className="text-[11px] text-zinc-400 font-normal capitalize">
+                    {docCategory} agreement mode
                   </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                <div>
-                  <label className="text-zinc-300 font-medium block mb-1">Requested Monthly Stipend:</label>
-                  <Input
-                    className="h-8 text-xs bg-zinc-900 border-zinc-700 text-zinc-100"
-                    value={stipendAmount}
-                    onChange={(e) => setStipendAmount(e.target.value)}
-                    placeholder="e.g. ₹25,000 / month"
-                  />
+              <CardContent className="p-4 space-y-3 text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-zinc-300 font-medium block mb-1">Recipient / Counterparty Title:</label>
+                    <Input
+                      className="h-8 text-xs bg-zinc-900 border-zinc-700 text-zinc-100"
+                      value={recipientTitle}
+                      onChange={(e) => setRecipientTitle(e.target.value)}
+                      placeholder="e.g. Landlord, Hiring Team, Client"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-zinc-300 font-medium block mb-1">Your Name / Sign-off:</label>
+                    <Input
+                      className="h-8 text-xs bg-zinc-900 border-zinc-700 text-zinc-100"
+                      value={senderName}
+                      onChange={(e) => setSenderName(e.target.value)}
+                      placeholder="Your Name"
+                    />
+                  </div>
                 </div>
+
                 <div>
-                  <label className="text-zinc-300 font-medium block mb-1">Workplace Arrangement:</label>
-                  <Input
-                    className="h-8 text-xs bg-zinc-900 border-zinc-700 text-zinc-100"
-                    value={remotePolicy}
-                    onChange={(e) => setRemotePolicy(e.target.value)}
-                    placeholder="e.g. 2 days remote"
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-300 font-medium block mb-1">Your Name / Title:</label>
-                  <Input
-                    className="h-8 text-xs bg-zinc-900 border-zinc-700 text-zinc-100"
-                    value={candidateName}
-                    onChange={(e) => setCandidateName(e.target.value)}
-                    placeholder="Candidate Name"
+                  <label className="text-zinc-300 font-medium block mb-1">
+                    Specific Requests / Demands for this Agreement:
+                  </label>
+                  <textarea
+                    rows={2}
+                    className="w-full text-xs p-2.5 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-red-600 resize-none"
+                    value={customDemand}
+                    onChange={(e) => setCustomDemand(e.target.value)}
+                    placeholder="Enter any specific requests (e.g. rent reduction, stipend amount, flexible remote days, refund timeline)"
                   />
                 </div>
               </CardContent>
             </Card>
 
-            {/* Generated Counter-Offer Letter Card */}
+            {/* Generated Counter-Letter Card */}
             <Card className="bg-zinc-950 border border-zinc-800 shadow-2xl">
               <CardHeader className="border-b border-zinc-800 py-3.5 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <CardTitle className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-                    <span>📝</span> Active Counter-Offer Package
+                    <span>📄</span> Formal Counter-Offer & Proposed Addendum
                   </CardTitle>
                   <p className="text-xs text-zinc-400 mt-0.5">
-                    Tackles unpaid terms, performance PPO criteria, and IP rights.
+                    Addresses all identified high-risk clauses and unbalanced provisions.
                   </p>
                 </div>
 
-                {/* AWS Action Buttons */}
+                {/* Clean User-Facing Action Buttons */}
                 <div className="flex items-center gap-2 flex-wrap">
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={isSavingToAws}
-                    onClick={() => handleSaveToAws(false)}
+                    disabled={isSaving}
+                    onClick={handleSaveDraft}
                     className="text-xs h-8 bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-200"
                   >
-                    {isSavingToAws ? "Saving..." : "💾 Save to Aurora DB"}
+                    {isSaving ? "Saving..." : "💾 Save Draft"}
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={isExportingToS3}
-                    onClick={() => handleSaveToAws(true)}
-                    className="text-xs h-8 bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-amber-300 border-amber-900/50"
+                    disabled={isDownloading}
+                    onClick={handleDownloadFile}
+                    className="text-xs h-8 bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-200"
                   >
-                    {isExportingToS3 ? "Exporting..." : "☁️ Export to S3"}
+                    📥 Download
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => copyToClipboard(generatedEmail, "Counter-offer email")}
+                    onClick={() => copyToClipboard(generatedResponse, "Response letter")}
                     className="text-xs h-8 bg-red-600 hover:bg-red-700 text-white font-medium"
                   >
-                    📋 Copy Draft
+                    📋 Copy Letter
                   </Button>
                 </div>
               </CardHeader>
 
-              {/* Status Bar for AWS mutations */}
-              {(lastSavedTime || savedS3Key) && (
-                <div className="px-4 py-2 bg-zinc-900/60 border-b border-zinc-800 flex items-center justify-between text-[11px] text-zinc-400">
-                  <span>
-                    {lastSavedTime && `Last saved to Aurora PostgreSQL at ${lastSavedTime}`}
-                  </span>
-                  {savedS3Key && (
-                    <span className="text-amber-400 font-mono">
-                      S3 Key: {savedS3Key}
-                    </span>
-                  )}
+              {/* Status Indicator */}
+              {lastSavedTime && (
+                <div className="px-4 py-1.5 bg-zinc-900/50 border-b border-zinc-800 text-[11px] text-zinc-400 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span>Draft saved at {lastSavedTime}</span>
                 </div>
               )}
 
               <CardContent className="p-4">
                 <div className="bg-zinc-900/90 border border-zinc-800 rounded-xl p-4 font-mono text-xs text-zinc-200 whitespace-pre-wrap leading-relaxed shadow-inner">
-                  {generatedEmail}
+                  {generatedResponse}
                 </div>
               </CardContent>
             </Card>
