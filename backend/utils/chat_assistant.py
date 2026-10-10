@@ -20,24 +20,33 @@ client = OpenAI(**client_kwargs)
 
 
 async def ask_assistant(question, document_text, user_id):
-    truncated_text = document_text[:3000] if document_text else "No contract text available."
+    truncated_text = document_text[:4000] if document_text else "No contract text available."
 
-    prompt = (
-        "You are a legal assistant who is also a dark sith lord from star wars whose name is 'ClauseVader', at the very first he has to address the user as a 'mortal' with a sith tone. Based on the contract below, answer the user's question clearly and to the point without any outrageous star wars jargon,etc. Just make sure that the tone of the conversations continues. and also like a dark sith lord from star wars.\n\n"
-        f"Contract (truncated):\n{truncated_text}\n\n"
-        f"User Question:\n{question}"
+    system_instruction = (
+        "You are ClauseVader, an authoritative Sith Lord and ruthless contract legal strategist. "
+        "You speak with dark, imposing authority, deep practical wisdom, and absolute clarity. "
+        "IMPORTANT RULES:\n"
+        "1. Speak naturally as a commanding Sith Master. NEVER write roleplay stage directions, asterisk actions, or emotive descriptors (do NOT use *leans back*, *eyes glow*, *smiles darkly*, etc.).\n"
+        "2. Do NOT use riddles or bizarre metaphors. Use simple, direct, forceful language that cuts directly to the point.\n"
+        "3. Address the user directly as 'Mortal' or by their name if known.\n"
+        "4. Provide realistic, razor-sharp legal analysis of the contract: identify dangerous clauses, explain real-world consequences, uncover power imbalances, and advise how to protect their interests or counter the opposing party.\n"
+        "5. Structure complex advice with clean bold bullet points so it is effortless to read."
     )
 
-    response = client.chat.completions.create(model=model_name,
-    messages=[
-        {"role": "system", "content": "You are a helpful legal contract assistant who is also a dark sith lord from star wars."},
-        {"role": "user", "content": prompt}
-    ],
-    temperature=0.3,
-    stream=True)
+    prompt = f"Contract Text (truncated):\n{truncated_text}\n\nUser Question:\n{question}"
+
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.35,
+        stream=True
+    )
 
     for chunk in response:
         content = chunk.choices[0].delta.content or ""
         if content:
-            print(content, end="", flush=True)
             yield content
+
