@@ -74,7 +74,12 @@ export default async function Page({ params }) {
 			<div className="flex flex-col lg:flex-row flex-1 w-full overflow-hidden">
 				{/* Left Section: Multi-Aspect Analysis Workspace (Graph, Redline Matrix, Counter-Offer Drafter) */}
 				<div className="flex-1 overflow-y-auto min-h-[600px] lg:min-h-0">
-					<ReportWorkspace clausesData={clausesData} documentTitle={document.filename} />
+					<ReportWorkspace
+						clausesData={clausesData}
+						documentTitle={document.filename}
+						docId={docId}
+						userId={user.id}
+					/>
 				</div>
 
 				{/* Right Section: Score Gauge & Full-Height Chat Assistant */}

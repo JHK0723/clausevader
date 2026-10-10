@@ -7,8 +7,11 @@ import os
 import io
 import boto3
 
+from typing import Optional, Dict, Any
+from pydantic import BaseModel
+
 from db import SessionLocal
-from models import User, Document, Clause, Chat, DocumentStatusEnum
+from models import User, Document, Clause, Chat, DocumentStatusEnum, NegotiationDraft
 from utils.extract_text import extract_text_from_file
 from utils.clause_scoring import analyze_clauses
 from utils.chat_assistant import ask_assistant
@@ -235,6 +238,91 @@ async def chat_with_doc_stream(document_id: UUID, message: str, user_id: int):
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
+class NegotiationDraftPayload(BaseModel):
+    user_id: int
+    subject: str
+    email_body: str
+    stipend_amount: Optional[str] = None
+    key_points: Optional[Dict[str, Any]] = None
+    export_to_s3: bool = False
+
+
+@app.get("/api/documents/{doc_id}/negotiation-draft")
+def get_negotiation_draft(doc_id: UUID):
+    db = SessionLocal()
+    try:
+        draft = db.query(NegotiationDraft).filter(NegotiationDraft.document_id == doc_id).first()
+        if not draft:
+            return {"draft": None}
+        return {
+            "draft": {
+                "id": str(draft.id),
+                "document_id": str(draft.document_id),
+                "user_id": draft.user_id,
+                "subject": draft.subject,
+                "email_body": draft.email_body,
+                "stipend_amount": draft.stipend_amount,
+                "key_points": draft.key_points,
+                "s3_key": draft.s3_key,
+                "created_at": str(draft.created_at),
+                "updated_at": str(draft.updated_at),
+            }
+        }
+    finally:
+        db.close()
+
+
+@app.post("/api/documents/{doc_id}/negotiation-draft")
+def save_negotiation_draft(doc_id: UUID, payload: NegotiationDraftPayload):
+    db = SessionLocal()
+    try:
+        draft = db.query(NegotiationDraft).filter(NegotiationDraft.document_id == doc_id).first()
+        if not draft:
+            draft = NegotiationDraft(
+                id=uuid4(),
+                document_id=doc_id,
+                user_id=payload.user_id,
+                subject=payload.subject,
+                email_body=payload.email_body,
+                stipend_amount=payload.stipend_amount,
+                key_points=payload.key_points,
+            )
+            db.add(draft)
+        else:
+            draft.subject = payload.subject
+            draft.email_body = payload.email_body
+            draft.stipend_amount = payload.stipend_amount
+            draft.key_points = payload.key_points
+
+        # Export to AWS S3 if requested
+        if payload.export_to_s3 and S3_BUCKET:
+            try:
+                s3_key = f"negotiations/{doc_id}/Counter_Offer_Package.txt"
+                content = f"SUBJECT: {payload.subject}\n\n{payload.email_body}"
+                s3_client.put_object(
+                    Bucket=S3_BUCKET,
+                    Key=s3_key,
+                    Body=content.encode("utf-8"),
+                    ContentType="text/plain",
+                    ServerSideEncryption="AES256"
+                )
+                draft.s3_key = s3_key
+            except Exception as s3_err:
+                print(f"[S3 ERROR] Failed to save counter offer to S3: {s3_err}")
+
+        db.commit()
+        db.refresh(draft)
+        return {
+            "success": True,
+            "draft_id": str(draft.id),
+            "s3_key": draft.s3_key,
+            "message": "Saved to AWS Aurora PostgreSQL and exported to AWS S3!" if draft.s3_key else "Saved to AWS Aurora PostgreSQL!"
+        }
+    finally:
+        db.close()
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000)
+

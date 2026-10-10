@@ -66,3 +66,17 @@ class Chat(Base):
     user_message = Column(Text)
     ai_response = Column(Text)
     created_at = Column(TIMESTAMP, server_default=func.now())
+
+
+class NegotiationDraft(Base):
+    __tablename__ = "negotiation_drafts"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"))
+    user_id = Column(Integer, ForeignKey("user.id"))
+    subject = Column(String)
+    email_body = Column(Text)
+    stipend_amount = Column(String)
+    key_points = Column(JSON)
+    s3_key = Column(String)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
