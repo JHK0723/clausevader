@@ -10,11 +10,17 @@ Example:
   python view_db.py chats
 """
 
+import os
 import sys
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-DATABASE_URL = "postgresql://clausevaderadmin:SMDtiv2024@clausevader-db.cluster-c30moyki61ex.ap-south-2.rds.amazonaws.com:5432/postgres"
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://user:password@localhost:5432/clausevader",
+)
+
 
 def main():
     table = sys.argv[1] if len(sys.argv) > 1 else None
@@ -24,13 +30,15 @@ def main():
 
     if not table:
         print("\n=======================================================")
-        print("  ClauseVader Database - Available Tables (Aurora PostgreSQL)")
+        print("  ClauseVader Database - Available Tables (PostgreSQL)")
         print("=======================================================")
-        cur.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name")
-        tables = [r['table_name'] for r in cur.fetchall()]
+        cur.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name"
+        )
+        tables = [r["table_name"] for r in cur.fetchall()]
         for t in tables:
             cur.execute(f'SELECT COUNT(*) FROM "{t}"')
-            count = cur.fetchone()['count']
+            count = cur.fetchone()["count"]
             print(f"  • {t:<22} ({count} rows)")
         print("\nTip: Run 'python view_db.py <table_name>' to view table data.")
         print("Example: python view_db.py documents\n")
@@ -54,6 +62,7 @@ def main():
             print()
 
     conn.close()
+
 
 if __name__ == "__main__":
     main()
