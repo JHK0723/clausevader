@@ -1,0 +1,232 @@
+{
+  "widgets": [
+    {
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 24,
+      "height": 3,
+      "properties": {
+        "markdown": "# 🛡️ ClauseVader - Production AWS Infrastructure & Telemetry\n**Region:** `ap-south-2` (Hyderabad) | **AWS Account:** `575172595786` | **System Status:** 🟢 All Services Operational\n---\n*Real-time observability across API Ingress, Serverless Compute, Aurora PostgreSQL Serverless v2, and Encrypted S3 Storage.*"
+      }
+    },
+    {
+      "type": "text",
+      "x": 0,
+      "y": 3,
+      "width": 24,
+      "height": 1,
+      "properties": {
+        "markdown": "### 🌐 1. Edge & API Ingress Tier (`sco67rfosl` • clausevader-api)"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 4,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "API Gateway Request Volume & Latency",
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "ap-south-2",
+        "period": 300,
+        "metrics": [
+          [ "AWS/ApiGateway", "Count", "ApiId", "sco67rfosl", { "stat": "Sum", "label": "Total Requests", "color": "#1f77b4" } ],
+          [ ".", "IntegrationLatency", ".", ".", { "stat": "Average", "label": "Backend Integration Latency (ms)", "yAxis": "right", "color": "#2ca02c" } ],
+          [ ".", "Latency", ".", ".", { "stat": "Average", "label": "Overall Latency (ms)", "yAxis": "right", "color": "#9467bd" } ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 4,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "API Gateway Error Rates (4xx & 5xx)",
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "ap-south-2",
+        "period": 300,
+        "metrics": [
+          [ "AWS/ApiGateway", "4XX", "ApiId", "sco67rfosl", { "stat": "Sum", "label": "Client Errors (4xx)", "color": "#ff7f0e" } ],
+          [ ".", "5XX", ".", ".", { "stat": "Sum", "label": "Server Errors (5xx)", "color": "#d62728" } ]
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "x": 0,
+      "y": 10,
+      "width": 24,
+      "height": 1,
+      "properties": {
+        "markdown": "### ⚡ 2. Serverless Compute Engine (AWS Lambda: `clausevader-backend`)"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 11,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "title": "Lambda Invocations & Concurrency",
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "ap-south-2",
+        "period": 300,
+        "metrics": [
+          [ "AWS/Lambda", "Invocations", "FunctionName", "clausevader-backend", { "stat": "Sum", "label": "Invocations", "color": "#1f77b4" } ],
+          [ ".", "ConcurrentExecutions", ".", ".", { "stat": "Maximum", "label": "Max Concurrent Executions", "yAxis": "right", "color": "#17becf" } ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 8,
+      "y": 11,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "title": "Lambda Execution Duration (Latency Profile)",
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "ap-south-2",
+        "period": 300,
+        "metrics": [
+          [ "AWS/Lambda", "Duration", "FunctionName", "clausevader-backend", { "stat": "Average", "label": "Avg Duration (ms)", "color": "#2ca02c" } ],
+          [ "...", { "stat": "p95", "label": "p95 Duration (ms)", "color": "#ff7f0e" } ],
+          [ "...", { "stat": "Maximum", "label": "Max Duration (ms)", "color": "#d62728" } ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 16,
+      "y": 11,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "title": "Lambda Errors & Throttles",
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "ap-south-2",
+        "period": 300,
+        "metrics": [
+          [ "AWS/Lambda", "Errors", "FunctionName", "clausevader-backend", { "stat": "Sum", "label": "Errors", "color": "#d62728" } ],
+          [ ".", "Throttles", ".", ".", { "stat": "Sum", "label": "Throttles", "color": "#e377c2" } ]
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "x": 0,
+      "y": 17,
+      "width": 24,
+      "height": 1,
+      "properties": {
+        "markdown": "### 🐘 3. Relational Database Tier (Aurora PostgreSQL Serverless v2: `clausevader-db`)"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 18,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "title": "Aurora Serverless Capacity (ACU) & CPU",
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "ap-south-2",
+        "period": 300,
+        "metrics": [
+          [ "AWS/RDS", "ServerlessDatabaseCapacity", "DBClusterIdentifier", "clausevader-db", { "stat": "Average", "label": "ACUs Capacity", "color": "#2ca02c" } ],
+          [ ".", "CPUUtilization", "DBInstanceIdentifier", "clausevader-db-instance-1", { "stat": "Average", "label": "CPU Utilization (%)", "yAxis": "right", "color": "#1f77b4" } ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 8,
+      "y": 18,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "title": "Database Connections & Memory",
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "ap-south-2",
+        "period": 300,
+        "metrics": [
+          [ "AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", "clausevader-db-instance-1", { "stat": "Maximum", "label": "DB Connections", "color": "#ff7f0e" } ],
+          [ ".", "FreeableMemory", ".", ".", { "stat": "Average", "label": "Freeable Memory (Bytes)", "yAxis": "right", "color": "#9467bd" } ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 16,
+      "y": 18,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "title": "Aurora Storage I/O & Cache Efficiency",
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "ap-south-2",
+        "period": 300,
+        "metrics": [
+          [ "AWS/RDS", "ReadIOPS", "DBInstanceIdentifier", "clausevader-db-instance-1", { "stat": "Average", "label": "Read IOPS", "color": "#1f77b4" } ],
+          [ ".", "WriteIOPS", ".", ".", { "stat": "Average", "label": "Write IOPS", "color": "#e377c2" } ],
+          [ ".", "BufferCacheHitRatio", ".", ".", { "stat": "Average", "label": "Buffer Cache Hit %", "yAxis": "right", "color": "#2ca02c" } ]
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "x": 0,
+      "y": 24,
+      "width": 24,
+      "height": 1,
+      "properties": {
+        "markdown": "### 🗄️ 4. Storage & Application Logs Tier (`clausevader-contracts-123456789012` & CloudWatch Logs)"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 25,
+      "width": 10,
+      "height": 6,
+      "properties": {
+        "title": "S3 Contract Documents Storage",
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "ap-south-2",
+        "period": 86400,
+        "metrics": [
+          [ "AWS/S3", "BucketSizeBytes", "BucketName", "clausevader-contracts-123456789012", "StorageType", "StandardStorage", { "stat": "Average", "label": "Bucket Size (Bytes)", "color": "#1f77b4" } ],
+          [ ".", "NumberOfObjects", ".", ".", ".", "AllStorageTypes", { "stat": "Average", "label": "Object Count", "yAxis": "right", "color": "#2ca02c" } ]
+        ]
+      }
+    },
+    {
+      "type": "log",
+      "x": 10,
+      "y": 25,
+      "width": 14,
+      "height": 6,
+      "properties": {
+        "title": "Lambda Live Execution & Error Log Stream",
+        "region": "ap-south-2",
+        "query": "SOURCE '/aws/lambda/clausevader-backend' | fields @timestamp, @message\n| sort @timestamp desc\n| limit 30",
+        "view": "table"
+      }
+    }
+  ]
+}
