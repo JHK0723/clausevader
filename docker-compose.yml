@@ -1,0 +1,27 @@
+services:
+  # ----------------------------------------------------------------------------
+  # ClauseVader FastAPI Backend Container
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: clausevader-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+    restart: unless-stopped
+    volumes:
+      # Live reload for development (syncs local backend code without rebuilding)
+      - ./backend:/app:ro
+      - /app/__pycache__
+    networks:
+      - clausevader-network
+
+networks:
+  clausevader-network:
+    driver: bridge
