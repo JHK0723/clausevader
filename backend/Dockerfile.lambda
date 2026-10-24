@@ -1,20 +1,29 @@
 # ==============================================================================
 # LegalLens Backend - AWS Lambda Container Image
-# Base image: AWS Lambda Python 3.11 provided by Amazon ECR Public
-# Allows packaging dependencies up to 10GB with zero binary incompatibility
+# Debian-based Lambda container with full C-extension support (pdfplumber, psycopg2)
+# Uses official AWS Lambda Runtime Interface Client (awslambdaric)
 # ==============================================================================
 
-FROM public.ecr.aws/lambda/python:3.11
+FROM python:3.11-slim AS base
 
-# Copy dependency requirements
-COPY requirements.txt ${LAMBDA_TASK_ROOT}
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive
 
-# Install dependencies into Lambda environment
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /var/task
+
+COPY requirements.txt .
+
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
+    pip install --no-cache-dir -r requirements.txt awslambdaric
 
-# Copy backend source code into Lambda task root
-COPY . ${LAMBDA_TASK_ROOT}
+COPY . /var/task
 
-# Handler entrypoint wrapped with Mangum in lambda_handler.py
+ENTRYPOINT [ "/usr/local/bin/python", "-m", "awslambdaric" ]
 CMD [ "lambda_handler.handler" ]
