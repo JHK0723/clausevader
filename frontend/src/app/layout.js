@@ -4,7 +4,7 @@ import { getCurrentSession } from "@/lib/server/session";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 
 export const metadata = {
-  title: "ClauseVader",
+  title: "LegalLens",
   description: "The Dark Side of Contract Analysis",
 };
 

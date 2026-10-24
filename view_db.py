@@ -11,12 +11,19 @@ Example:
 """
 
 import sys
+import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-DATABASE_URL = "postgresql://clausevaderadmin:SMDtiv2024@clausevader-db.cluster-c30moyki61ex.ap-south-2.rds.amazonaws.com:5432/postgres"
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 def main():
+    if not DATABASE_URL:
+        print("Error: DATABASE_URL environment variable is not set.")
+        print("Set DATABASE_URL before running this script, e.g.:")
+        print("  $env:DATABASE_URL='postgresql://user:password@host:5432/database'")
+        sys.exit(1)
+
     table = sys.argv[1] if len(sys.argv) > 1 else None
 
     conn = psycopg2.connect(DATABASE_URL)

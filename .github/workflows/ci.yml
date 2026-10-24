@@ -1,0 +1,126 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  frontend-checks:
+    name: Frontend Lint & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@60edb5dd545a775178f525247059d64022d32414 # v4.0.2
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run Next.js production build
+        env:
+          NEXT_PUBLIC_APP_URL: "https://legallens.placeholder"
+          NEXT_PUBLIC_BACKEND_URL: "https://api.legallens.placeholder"
+          DATABASE_URL: "postgresql://ci_dummy:ci_dummy@localhost:5432/ci_dummy"
+        run: npm run build
+
+  backend-checks:
+    name: Backend Syntax & Imports
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'backend/requirements.txt'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt flake8
+
+      - name: Python bytecode compilation check
+        run: |
+          python -c "import compileall, sys; sys.exit(0 if compileall.compile_dir('.', force=True) else 1)"
+
+      - name: Static code analysis with Flake8
+        run: |
+          # Stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Report warnings and complexity (non-blocking)
+          flake8 . --count --exit-zero --max-complexity=15 --max-line-length=127 --statistics
+
+      - name: Verify module imports with simulated configuration
+        env:
+          DATABASE_URL: "postgresql://ci_test:ci_test@localhost:5432/test_db"
+          AWS_REGION: "ap-south-2"
+          OPENAI_API_KEY: "mock-ci-key-do-not-call"
+        run: |
+          python -c "import main, db, models, lambda_handler; print('Backend modules imported successfully.')"
+
+      - name: Inspect automated test suite
+        run: |
+          echo "Inspecting repository for automated test suite..."
+          if [ -d "tests" ] || [ -f "pytest.ini" ]; then
+            echo "Automated test suite detected. Running pytest..."
+            pytest
+          else
+            echo "Notice: No dedicated automated test suite (pytest/unittest) is present in the repository."
+            echo "Static syntax compilation, flake8 analysis, and module import checks completed successfully."
+          fi
+
+  docker-validation:
+    name: Docker Build Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Set up Docker Buildx
+        uses: actions/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 # v3.0.0
+
+      - name: Validate Backend Dockerfile (Web / FastAPI)
+        uses: docker/build-push-action@4a13e500e05cf64e00867347714e316f9cb62075 # v5.1.0
+        with:
+          context: backend
+          file: backend/Dockerfile
+          push: false
+          tags: legallens-backend:ci-check
+
+      - name: Validate Backend Lambda Dockerfile (AWS Lambda)
+        uses: docker/build-push-action@4a13e500e05cf64e00867347714e316f9cb62075 # v5.1.0
+        with:
+          context: backend
+          file: backend/Dockerfile.lambda
+          push: false
+          tags: legallens-backend-lambda:ci-check

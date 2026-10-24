@@ -342,7 +342,7 @@ ${senderName}`;
                       {clause.sith_view && (
                         <div className="flex-1 text-zinc-300 italic bg-red-950/20 p-2.5 rounded-lg border border-red-900/30">
                           <strong className="text-red-400 not-italic block mb-0.5">⚔️ Sith Master View:</strong>
-                          "{clause.sith_view}"
+                          &ldquo;{clause.sith_view}&rdquo;
                         </div>
                       )}
                       {clause.cons?.length > 0 && (

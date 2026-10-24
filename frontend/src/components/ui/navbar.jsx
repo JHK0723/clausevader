@@ -18,7 +18,7 @@ export default function NavBar({ user }) {
     <nav className="bg-black h-16 text-white border-b border-red-900 shadow-md">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
         <Link href="/" className="text-xl font-bold text-red-600">
-          ClauseVader
+          LegalLens
         </Link>
 
         {/* Desktop Links */}

@@ -7,23 +7,23 @@ export default function AboutPage() {
   return (
     <main className="max-w-5xl mx-auto px-6 py-12 space-y-10">
       <section className="flex flex-col items-center text-center space-y-4">
-        <h1 className="text-4xl font-bold">⚖️ About ClauseVader</h1>
-        <Image alt="ClauseVader" src="/clausevader.jpeg" height={600} width={300} />
+        <h1 className="text-4xl font-bold">⚖️ About LegalLens</h1>
+        <Image alt="LegalLens" src="/clausevader.jpeg" height={600} width={300} />
         <p className="text-lg text-muted-foreground">
-          ClauseVader is your AI-powered Sith Lord legal assistant – combining cutting-edge contract analysis with a touch of dark side flair.
+          LegalLens is your AI-powered Sith Lord legal assistant – combining cutting-edge contract analysis with a touch of dark side flair.
         </p>
       </section>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">🧩 What is ClauseVader?</CardTitle>
+          <CardTitle className="text-2xl">🧩 What is LegalLens?</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-muted-foreground">
           <p>
-            ClauseVader is a contract analyzer built using GPT-4 that helps users demystify legal jargon. Whether you’re reviewing a lease or a partnership agreement, ClauseVader breaks it down into clear clauses, evaluates each one for fairness and risk, and gives you the power to question it – Sith-style.
+            LegalLens is a contract analyzer built using GPT-4 that helps users demystify legal jargon. Whether you’re reviewing a lease or a partnership agreement, LegalLens breaks it down into clear clauses, evaluates each one for fairness and risk, and gives you the power to question it – Sith-style.
           </p>
           <blockquote className="border-l-4 pl-4 italic">
-            “You may upload the agreement… but it does not favor you.” – ClauseVader
+            “You may upload the agreement… but it does not favor you.” – LegalLens
           </blockquote>
         </CardContent>
       </Card>
