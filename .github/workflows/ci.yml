@@ -116,11 +116,3 @@ jobs:
           file: backend/Dockerfile
           push: false
           tags: legallens-backend:ci-check
-
-      - name: Build backend Lambda Docker image (backend/Dockerfile.lambda)
-        uses: docker/build-push-action@v5
-        with:
-          context: backend
-          file: backend/Dockerfile.lambda
-          push: false
-          tags: legallens-backend-lambda:ci-check

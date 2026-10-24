@@ -6,15 +6,15 @@
 
 FROM public.ecr.aws/lambda/python:3.11
 
-# Copy dependency requirements into Lambda task root
-COPY requirements.txt ${LAMBDA_TASK_ROOT}/
+# Copy dependency requirements
+COPY requirements.txt ${LAMBDA_TASK_ROOT}
 
-# Install dependencies into Lambda task root
+# Install dependencies into Lambda environment
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt --target "${LAMBDA_TASK_ROOT}"
+    pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
 
 # Copy backend source code into Lambda task root
-COPY . ${LAMBDA_TASK_ROOT}/
+COPY . ${LAMBDA_TASK_ROOT}
 
 # Handler entrypoint wrapped with Mangum in lambda_handler.py
 CMD [ "lambda_handler.handler" ]
