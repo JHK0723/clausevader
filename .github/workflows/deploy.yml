@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@v4
         with:
           # When triggered by workflow_run, checkout the exact commit of the triggering run
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
@@ -55,7 +55,7 @@ jobs:
           echo "Using image tag: $TAG"
 
       - name: Configure AWS Credentials (OIDC or Secret Keys)
-        uses: aws-actions/configure-aws-credentials@e3ddf4a3c7dd0023462b891933f7cb63d79873a4 # v4.0.2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -64,10 +64,10 @@ jobs:
 
       - name: Log in to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Set up Docker Buildx
-        uses: actions/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 # v3.0.0
+        uses: actions/setup-buildx-action@v3
 
       - name: Build and push Lambda container image to Amazon ECR
         env:

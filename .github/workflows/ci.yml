@@ -25,10 +25,10 @@ jobs:
         working-directory: frontend
     steps:
       - name: Checkout repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@v4
 
       - name: Set up Node.js 20
-        uses: actions/setup-node@60edb5dd545a775178f525247059d64022d32414 # v4.0.2
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
@@ -55,10 +55,10 @@ jobs:
         working-directory: backend
     steps:
       - name: Checkout repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@v4
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -104,13 +104,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: actions/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 # v3.0.0
+        uses: actions/setup-buildx-action@v3
 
       - name: Validate Backend Dockerfile (Web / FastAPI)
-        uses: docker/build-push-action@4a13e500e05cf64e00867347714e316f9cb62075 # v5.1.0
+        uses: docker/build-push-action@v5
         with:
           context: backend
           file: backend/Dockerfile
@@ -118,7 +118,7 @@ jobs:
           tags: legallens-backend:ci-check
 
       - name: Validate Backend Lambda Dockerfile (AWS Lambda)
-        uses: docker/build-push-action@4a13e500e05cf64e00867347714e316f9cb62075 # v5.1.0
+        uses: docker/build-push-action@v5
         with:
           context: backend
           file: backend/Dockerfile.lambda
