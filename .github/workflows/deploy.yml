@@ -97,54 +97,10 @@ jobs:
           IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           echo "⚡ Deploying to Lambda function '$LAMBDA_FUNCTION_NAME' with image: $IMAGE_URI"
 
-          PKG_TYPE=$(aws lambda get-function-configuration \
+          aws lambda update-function-code \
             --function-name "$LAMBDA_FUNCTION_NAME" \
-            --region "$AWS_REGION" \
-            --query "PackageType" \
-            --output text 2>/dev/null || echo "None")
-
-          if [ "$PKG_TYPE" = "Image" ]; then
-            echo "Updating existing Image-based Lambda function..."
-            aws lambda update-function-code \
-              --function-name "$LAMBDA_FUNCTION_NAME" \
-              --image-uri "$IMAGE_URI" \
-              --region "$AWS_REGION"
-          elif [ "$PKG_TYPE" = "Zip" ]; then
-            echo "Function is currently PackageType=Zip. Migrating to PackageType=Image for container deployment..."
-            ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
-            ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/clausevader-lambda-role"
-            RAW_ENV=$(aws lambda get-function-configuration \
-              --function-name "$LAMBDA_FUNCTION_NAME" \
-              --region "$AWS_REGION" \
-              --query "Environment.Variables" \
-              --output json)
-
-            echo "Deleting existing Zip-based function..."
-            aws lambda delete-function --function-name "$LAMBDA_FUNCTION_NAME" --region "$AWS_REGION"
-            sleep 5
-
-            echo "Recreating function as container image..."
-            aws lambda create-function \
-              --function-name "$LAMBDA_FUNCTION_NAME" \
-              --package-type Image \
-              --code ImageUri="$IMAGE_URI" \
-              --role "$ROLE_ARN" \
-              --timeout 300 \
-              --memory-size 512 \
-              --region "$AWS_REGION" \
-              --environment "Variables=$(echo "$RAW_ENV" | jq -c .)"
-
-            echo "Re-attaching API Gateway invoke permission..."
-            aws lambda add-permission \
-              --function-name "$LAMBDA_FUNCTION_NAME" \
-              --statement-id "apigateway-access" \
-              --action "lambda:InvokeFunction" \
-              --principal "apigateway.amazonaws.com" \
-              --region "$AWS_REGION" || true
-          else
-            echo "❌ Unexpected PackageType '$PKG_TYPE' or function not found."
-            exit 1
-          fi
+            --image-uri "$IMAGE_URI" \
+            --region "$AWS_REGION"
 
       - name: Wait for Lambda function update to complete
         run: |
