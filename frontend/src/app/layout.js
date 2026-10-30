@@ -4,8 +4,8 @@ import { getCurrentSession } from "@/lib/server/session";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 
 export const metadata = {
-  title: "LegalLens",
-  description: "The Dark Side of Contract Analysis",
+  title: "ClauseVader",
+  description: "AI-Powered Contract Analysis & Legal Reasoning Platform",
 };
 
 export default async function RootLayout({ children }) {

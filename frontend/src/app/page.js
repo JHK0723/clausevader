@@ -10,7 +10,7 @@ export default function Home() {
         <div className="w-full max-w-3xl text-center mx-auto">
           <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold tracking-tight mb-6 leading-tight">
             Welcome to{" "}
-            <span className="text-red-500 drop-shadow-lg">LegalLens</span>
+            <span className="text-red-500 drop-shadow-lg">ClauseVader</span>
           </h1>
           <p className="md:text-4xl text-md sm:text-lg  mb-8 leading-relaxed">
             The Dark Side of contract analysis. Uncover red flags. Rewrite with
@@ -37,7 +37,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-transparent text-center py-4 border-t border-red-900 text-sm text-red-500">
-        &copy; {new Date().getFullYear()} LegalLens. Forged in the shadows of Coruscant.
+        &copy; {new Date().getFullYear()} ClauseVader. Forged in the shadows of Coruscant.
       </footer>
     </div>
   );

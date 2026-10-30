@@ -1,5 +1,5 @@
 # ==============================================================================
-# LegalLens Backend - AWS Lambda Container Image
+# ClauseVader Backend - AWS Lambda Container Image
 # Debian-based Lambda container with full C-extension support (pdfplumber, psycopg2)
 # Uses official AWS Lambda Runtime Interface Client (awslambdaric)
 # ==============================================================================

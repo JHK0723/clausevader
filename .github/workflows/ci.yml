@@ -42,8 +42,8 @@ jobs:
 
       - name: Run Next.js production build
         env:
-          NEXT_PUBLIC_APP_URL: "https://legallens.placeholder"
-          NEXT_PUBLIC_BACKEND_URL: "https://api.legallens.placeholder"
+          NEXT_PUBLIC_APP_URL: "https://clausevader.placeholder"
+          NEXT_PUBLIC_BACKEND_URL: "https://api.clausevader.placeholder"
           DATABASE_URL: "postgresql://ci_dummy:ci_dummy@localhost:5432/ci_dummy"
         run: npm run build
 
@@ -115,4 +115,4 @@ jobs:
           context: backend
           file: backend/Dockerfile
           push: false
-          tags: legallens-backend:ci-check
+          tags: clausevader-backend:ci-check

@@ -218,7 +218,7 @@ export default function ChatWidget({ documentId, userId, user, history = [] }) {
           <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]" />
           <div>
             <h2 className="text-sm font-semibold text-zinc-100 flex items-center gap-1.5">
-              <span>LegalLens AI Counsel</span>
+              <span>ClauseVader AI Counsel</span>
             </h2>
             <p className="text-[11px] text-zinc-400">Direct Contract Analysis & Strategy</p>
           </div>
@@ -244,7 +244,7 @@ export default function ChatWidget({ documentId, userId, user, history = [] }) {
                 {!isUser && (
                   <Avatar className="w-9 h-9 border border-red-900/60 shadow-md mt-0.5 shrink-0">
                     <AvatarImage src="/assistant.png" />
-                    <AvatarFallback className="bg-red-950 text-red-200 text-xs font-bold">LL</AvatarFallback>
+                    <AvatarFallback className="bg-red-950 text-red-200 text-xs font-bold">CV</AvatarFallback>
                   </Avatar>
                 )}
 
@@ -274,7 +274,7 @@ export default function ChatWidget({ documentId, userId, user, history = [] }) {
             <div className="flex items-start gap-3 justify-start">
               <Avatar className="w-9 h-9 border border-red-900/60 shadow-md mt-0.5 shrink-0">
                 <AvatarImage src="/assistant.png" />
-                <AvatarFallback className="bg-red-950 text-red-200 text-xs font-bold">LL</AvatarFallback>
+                <AvatarFallback className="bg-red-950 text-red-200 text-xs font-bold">CV</AvatarFallback>
               </Avatar>
               <div className="px-4 py-3 rounded-2xl rounded-tl-sm max-w-[85%] leading-relaxed text-[15px] bg-zinc-900/90 border border-red-900/40 text-zinc-100 shadow-lg shadow-black/40">
                 {streamingText ? (
@@ -285,7 +285,7 @@ export default function ChatWidget({ documentId, userId, user, history = [] }) {
                 ) : (
                   <span className="flex items-center gap-2 text-zinc-400 text-sm">
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                    LegalLens is formulating your strategic counsel...
+                    ClauseVader is formulating your strategic counsel...
                   </span>
                 )}
               </div>
@@ -328,7 +328,7 @@ export default function ChatWidget({ documentId, userId, user, history = [] }) {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask LegalLens about any clause..."
+          placeholder="Ask ClauseVader about any clause..."
           disabled={isLoading}
         />
         <Button

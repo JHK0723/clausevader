@@ -1,6 +1,6 @@
 # CI/CD Pipeline & Deployment Architecture Guide
 
-This document outlines the Continuous Integration (CI) and Continuous Deployment (CD) architecture for **LegalLens** (formerly ClauseVader), covering the frontend (Next.js 15 on Vercel) and the backend (FastAPI Python 3.11 containerized on AWS Lambda & Amazon ECR).
+This document outlines the Continuous Integration (CI) and Continuous Deployment (CD) architecture for **ClauseVader** (formerly ClauseVader), covering the frontend (Next.js 15 on Vercel) and the backend (FastAPI Python 3.11 containerized on AWS Lambda & Amazon ECR).
 
 ---
 
@@ -64,8 +64,8 @@ The CI workflow validates every pull request and commit targeting `main`, as wel
 - **Dependency Management**: Runs `npm ci` inside `frontend/` using package-lock caching (`actions/setup-node` with `cache: 'npm'`).
 - **ESLint Validation**: Executes `npm run lint`. Configured with `.eslintrc.json` extending `next/core-web-vitals` using `eslint@^8.57.1` to prevent circular-reference schema bugs present in early ESLint 9 + Next.js configurations.
 - **Production Build**: Executes `npm run build` using safe placeholder environment variables:
-  - `NEXT_PUBLIC_APP_URL: "https://legallens.placeholder"`
-  - `NEXT_PUBLIC_BACKEND_URL: "https://api.legallens.placeholder"`
+  - `NEXT_PUBLIC_APP_URL: "https://clausevader.placeholder"`
+  - `NEXT_PUBLIC_BACKEND_URL: "https://api.clausevader.placeholder"`
   - `DATABASE_URL: "postgresql://ci_dummy:ci_dummy@localhost:5432/ci_dummy"`
   *Note*: No secrets or production database credentials are leaked or required for the build.
 
