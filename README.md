@@ -13,8 +13,6 @@
 > **“You may upload the agreement… but it does not favor you.”** — *ClauseVader*
 
 **Live Production URL:** [https://clausevadermain.vercel.app/](https://clausevadermain.vercel.app/)  
-**Course Assignment:** BCSE355L — Cloud Architecture and Design  
-**Author:** Harish krishna J (24BAI1022) | Vellore Institute of Technology (VIT Chennai)
 
 ---
 
@@ -154,77 +152,7 @@ ClauseVader implements a decoupled **Serverless + Edge** architectural topology.
 - **CI/CD Automation:** GitHub Actions (`.github/workflows/ci.yml` and `deploy.yml`)
 - **Authentication:** Keyless AWS OpenID Connect (OIDC) via `github-actions-deploy-role`
 - **Telemetry & Monitoring:** Amazon CloudWatch Dashboard (`ClauseVader-Production-Monitoring`)
-
----
-
-## 📦 Database Relational Schema
-
-```sql
-CREATE TABLE "user" (
-    id SERIAL PRIMARY KEY,
-    google_id TEXT NOT NULL UNIQUE,
-    name TEXT NOT NULL,
-    picture TEXT
-);
-
-CREATE TABLE session (
-    id TEXT NOT NULL PRIMARY KEY,
-    user_id INTEGER REFERENCES "user"(id) ON DELETE CASCADE,
-    expires_at INTEGER NOT NULL
-);
-
-CREATE TABLE documents (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id INTEGER REFERENCES "user"(id) ON DELETE CASCADE,
-    filename TEXT,
-    original_file_url TEXT,
-    extracted_text TEXT,
-    role TEXT CHECK (role IN ('recipient', 'issuer', 'unsure')),
-    created_at TIMESTAMP DEFAULT now(),
-    status TEXT CHECK (status IN ('processing', 'done', 'error')) DEFAULT 'processing',
-    favourability_score INTEGER,
-    title TEXT
-);
-
-CREATE TABLE clauses (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
-    clause_text TEXT,
-    summary TEXT,
-    pros JSONB,
-    cons JSONB,
-    suggested_rewrite TEXT,
-    sith_view TEXT,
-    x FLOAT CHECK (x >= 0.0 AND x <= 1.0),
-    y FLOAT CHECK (y >= 0.0 AND y <= 1.0),
-    impact TEXT CHECK (impact IN ('favourable', 'neutral', 'unfavourable')),
-    favorability_score INTEGER,
-    created_at TIMESTAMP DEFAULT now()
-);
-
-CREATE TABLE chats (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id INTEGER REFERENCES "user"(id) ON DELETE CASCADE,
-    document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
-    user_message TEXT,
-    ai_response TEXT,
-    created_at TIMESTAMP DEFAULT now()
-);
-
-CREATE TABLE negotiation_drafts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
-    user_id INTEGER REFERENCES "user"(id) ON DELETE CASCADE,
-    subject TEXT,
-    email_body TEXT,
-    stipend_amount TEXT,
-    key_points JSONB,
-    s3_key TEXT,
-    created_at TIMESTAMP DEFAULT now(),
-    updated_at TIMESTAMP DEFAULT now()
-);
-```
-
+  
 ---
 
 ## 🔄 CI/CD Automation Architecture
