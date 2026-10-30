@@ -43,13 +43,18 @@ jobs:
 
       - name: Determine Docker image tag
         id: image-tag
+        env:
+          # Passed via env (not inlined into the script) to prevent shell injection
+          TAG_OVERRIDE: ${{ github.event.inputs.image_tag_override }}
+          RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          EVENT_SHA: ${{ github.sha }}
         run: |
-          if [ -n "${{ github.event.inputs.image_tag_override }}" ]; then
-            TAG="${{ github.event.inputs.image_tag_override }}"
-          elif [ -n "${{ github.event.workflow_run.head_sha }}" ]; then
-            TAG="${{ github.event.workflow_run.head_sha }}"
+          if [ -n "$TAG_OVERRIDE" ]; then
+            TAG="$TAG_OVERRIDE"
+          elif [ -n "$RUN_HEAD_SHA" ]; then
+            TAG="$RUN_HEAD_SHA"
           else
-            TAG="${{ github.sha }}"
+            TAG="$EVENT_SHA"
           fi
           echo "TAG=$TAG" >> "$GITHUB_OUTPUT"
           echo "Using image tag: $TAG"
@@ -78,8 +83,12 @@ jobs:
           LATEST_URI="$ECR_REGISTRY/$ECR_REPOSITORY:latest"
 
           echo "🔨 Building Docker container image for linux/amd64 architecture..."
+          # --provenance=false and --sbom=false stop Buildx from pushing an OCI image
+          # index with attestation manifests, which Lambda does not support.
           docker build \
             --platform linux/amd64 \
+            --provenance=false \
+            --sbom=false \
             -t "$IMAGE_URI" \
             -t "$LATEST_URI" \
             -f backend/Dockerfile.lambda \
@@ -108,7 +117,7 @@ jobs:
           aws lambda wait function-updated \
             --function-name "$LAMBDA_FUNCTION_NAME" \
             --region "$AWS_REGION"
-          
+
           STATUS=$(aws lambda get-function-configuration \
             --function-name "$LAMBDA_FUNCTION_NAME" \
             --region "$AWS_REGION" \
